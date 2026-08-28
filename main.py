@@ -4,8 +4,9 @@ import sys
 
 import config
 from client import QBittorrentDriver, QBitAuthError, TaskAddError, QBitClientError
-from models import AcquireRequest, TaskStatus
+from models import AcquireRequest, SearchQuery, TaskStatus
 from orchestrator import DownloadOrchestrator
+from search import QBitSearchProvider, SearchJobError, SearchTimeoutError
 
 
 def _progress_printer(status: TaskStatus) -> None:
@@ -17,7 +18,13 @@ def _progress_printer(status: TaskStatus) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Download a torrent via qBittorrent")
-    parser.add_argument("url", help="Magnet URI or .torrent URL")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--url", help="Magnet URI or .torrent URL")
+    group.add_argument("--search", help="Search query to find torrents automatically")
+    parser.add_argument("--category", default="all",
+                        help="Search category (default: all)")
+    parser.add_argument("--min-seeds", type=int, default=1,
+                        help="Minimum seeders for search results (default: 1)")
     parser.add_argument("--save-path", default=None,
                         help=f"Download destination (default: {config.DEFAULT_SAVE_PATH})")
     parser.add_argument("--timeout", type=int, default=30,
@@ -46,18 +53,34 @@ def main() -> int:
         print(f"Authentication failed: {exc}", file=sys.stderr)
         return 1
 
-    request = AcquireRequest(source_url=args.url, save_path=save_path)
-    orchestrator = DownloadOrchestrator(driver)
+    search_provider = QBitSearchProvider(driver._client)
+    orchestrator = DownloadOrchestrator(driver, search_provider=search_provider)
 
-    print(f"Starting download: {args.url}")
     try:
-        success = orchestrator.acquire(
-            request,
-            stall_timeout=args.timeout,
-            poll_interval=args.poll_interval,
-            progress_callback=_progress_printer,
-        )
-    except (TaskAddError, QBitClientError) as exc:
+        if args.search:
+            query = SearchQuery(
+                query=args.search,
+                category=args.category,
+                min_seeders=args.min_seeds,
+            )
+            print(f"Searching for: {args.search}")
+            success = orchestrator.acquire_from_search(
+                query,
+                save_path=save_path,
+                stall_timeout=args.timeout,
+                poll_interval=args.poll_interval,
+                progress_callback=_progress_printer,
+            )
+        else:
+            request = AcquireRequest(source_url=args.url, save_path=save_path)
+            print(f"Starting download: {args.url}")
+            success = orchestrator.acquire(
+                request,
+                stall_timeout=args.timeout,
+                poll_interval=args.poll_interval,
+                progress_callback=_progress_printer,
+            )
+    except (TaskAddError, QBitClientError, SearchJobError, SearchTimeoutError) as exc:
         print(f"\nError: {exc}", file=sys.stderr)
         return 1
 

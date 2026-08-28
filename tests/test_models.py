@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from models import TaskStatus, AcquireRequest
+from models import TaskStatus, AcquireRequest, SearchQuery, SearchResult
 
 
 class TestTaskStatus:
@@ -102,3 +102,44 @@ class TestTaskStatusRequiredFields:
                 task_id="abc", name="Test", progress=0.5,
                 download_speed=0, eta_seconds=0,
             )
+
+
+class TestSearchQuery:
+    def test_defaults(self):
+        q = SearchQuery(query="linux iso")
+        assert q.query == "linux iso"
+        assert q.category == "all"
+        assert q.min_seeders == 1
+        assert q.max_results == 20
+
+    def test_custom_values(self):
+        q = SearchQuery(query="test", category="music", min_seeders=5, max_results=10)
+        assert q.category == "music"
+        assert q.min_seeders == 5
+        assert q.max_results == 10
+
+
+class TestSearchResult:
+    def test_defaults(self):
+        r = SearchResult(title="Test", download_url="magnet:?a")
+        assert r.size_bytes == 0
+        assert r.seeders == 0
+        assert r.indexer == "qBitPlugin"
+        assert r.info_hash is None
+
+    def test_negative_size_rejected(self):
+        with pytest.raises(ValidationError):
+            SearchResult(title="Test", download_url="magnet:?a", size_bytes=-1)
+
+    def test_negative_seeders_rejected(self):
+        with pytest.raises(ValidationError):
+            SearchResult(title="Test", download_url="magnet:?a", seeders=-1)
+
+    def test_serialization_round_trip(self):
+        r = SearchResult(
+            title="Test", download_url="magnet:?a",
+            size_bytes=1024, seeders=50, indexer="idx",
+        )
+        data = r.model_dump()
+        r2 = SearchResult(**data)
+        assert r == r2

@@ -15,3 +15,19 @@ class AcquireRequest(BaseModel):
     source_url: str
     display_name: Optional[str] = None
     save_path: Optional[str] = None
+
+
+class SearchQuery(BaseModel):
+    query: str
+    category: str = "all"
+    min_seeders: int = 1
+    max_results: int = 20
+
+
+class SearchResult(BaseModel):
+    title: str
+    download_url: str
+    size_bytes: int = Field(default=0, ge=0)
+    seeders: int = Field(default=0, ge=0)
+    indexer: str = "qBitPlugin"
+    info_hash: Optional[str] = None
