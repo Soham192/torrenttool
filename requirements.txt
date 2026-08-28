@@ -1,0 +1,7 @@
+qbittorrent-api>=2024.1.58
+pydantic>=2.0
+python-dotenv
+
+# dev
+pytest
+pytest-mock
