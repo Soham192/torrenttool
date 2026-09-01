@@ -28,6 +28,26 @@ services:
       - qbittorrent
     restart: unless-stopped
 
+  telegram-bot:
+    build: .
+    container_name: telegram_bot
+    env_file:
+      - .env
+    command: ["python", "telegram_bot.py"]
+    depends_on:
+      - qbittorrent
+    restart: unless-stopped
+
+  discord-bot:
+    build: .
+    container_name: discord_bot
+    env_file:
+      - .env
+    command: ["python", "discord_bot.py"]
+    depends_on:
+      - qbittorrent
+    restart: unless-stopped
+
 volumes:
   qbit_config:
   downloads:

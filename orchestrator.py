@@ -3,7 +3,7 @@ import time
 from typing import Callable, Optional
 
 from client import BaseClientDriver
-from models import AcquireRequest, SearchQuery, TaskStatus
+from models import AcquireRequest, SearchQuery, SearchResult, TaskStatus
 from search import BaseSearchProvider
 
 logger = logging.getLogger(__name__)
@@ -17,6 +17,11 @@ class DownloadOrchestrator:
     ):
         self._driver = driver
         self._search_provider = search_provider
+
+    def search_only(self, query: SearchQuery) -> list[SearchResult]:
+        if self._search_provider is None:
+            raise RuntimeError("No search provider configured")
+        return self._search_provider.search(query)
 
     def acquire(
         self,

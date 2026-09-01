@@ -23,7 +23,7 @@ class QBitClientError(Exception):
 
 class BaseClientDriver(ABC):
     @abstractmethod
-    def add_task(self, url: str, save_path: Optional[str] = None) -> str:
+    def add_task(self, url: str, save_path: Optional[str] = None, tags: Optional[str] = None) -> str:
         ...
 
     @abstractmethod
@@ -68,7 +68,7 @@ class QBittorrentDriver(BaseClientDriver):
         except Exception as exc:
             raise QBitClientError(f"Connection error: {exc}") from exc
 
-    def add_task(self, url: str, save_path: Optional[str] = None) -> str:
+    def add_task(self, url: str, save_path: Optional[str] = None, tags: Optional[str] = None) -> str:
         info_hash = _parse_hash_from_magnet(url)
 
         try:
@@ -79,6 +79,11 @@ class QBittorrentDriver(BaseClientDriver):
             raise TaskAddError(f"Failed to add torrent: {exc}") from exc
 
         if info_hash:
+            if tags:
+                try:
+                    self._client.torrents_add_tags(tags=tags, torrent_hashes=info_hash)
+                except qbittorrentapi.APIError:
+                    pass
             return info_hash
 
         for _ in range(10):
@@ -89,9 +94,21 @@ class QBittorrentDriver(BaseClientDriver):
                 raise QBitClientError(f"Failed to list torrents: {exc}") from exc
             for t in torrents:
                 if url in (t.get("magnet_uri", ""), t.get("content_path", "")):
-                    return t["hash"].lower()
+                    resolved = t["hash"].lower()
+                    if tags:
+                        try:
+                            self._client.torrents_add_tags(tags=tags, torrent_hashes=resolved)
+                        except qbittorrentapi.APIError:
+                            pass
+                    return resolved
             if torrents:
-                return torrents[0]["hash"].lower()
+                resolved = torrents[0]["hash"].lower()
+                if tags:
+                    try:
+                        self._client.torrents_add_tags(tags=tags, torrent_hashes=resolved)
+                    except qbittorrentapi.APIError:
+                        pass
+                return resolved
 
         raise TaskAddError(f"Could not resolve hash for added torrent: {url}")
 

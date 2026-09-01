@@ -224,3 +224,18 @@ class TestAcquireFromSearchNoProvider:
         orch = DownloadOrchestrator(mock_driver)
         with pytest.raises(RuntimeError, match="No search provider configured"):
             orch.acquire_from_search(QUERY)
+
+
+class TestSearchOnly:
+    def test_returns_search_results(self, mock_driver, mock_search_provider):
+        mock_search_provider.search.return_value = [CANDIDATE_A, CANDIDATE_B]
+        orch = DownloadOrchestrator(mock_driver, search_provider=mock_search_provider)
+        results = orch.search_only(QUERY)
+        assert len(results) == 2
+        assert results[0].title == CANDIDATE_A.title
+        mock_search_provider.search.assert_called_once_with(QUERY)
+
+    def test_raises_without_provider(self, mock_driver):
+        orch = DownloadOrchestrator(mock_driver)
+        with pytest.raises(RuntimeError, match="No search provider configured"):
+            orch.search_only(QUERY)

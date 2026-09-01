@@ -2,6 +2,7 @@ import re
 
 import streamlit as st
 import config
+import bot_common
 from client import QBittorrentDriver, QBitAuthError, QBitClientError
 from models import SearchQuery
 from search import QBitSearchProvider, SearchJobError, SearchTimeoutError
@@ -9,19 +10,8 @@ from search import QBitSearchProvider, SearchJobError, SearchTimeoutError
 st.set_page_config(page_title="qbit_pipeline", layout="wide")
 
 
-def _format_size(size_bytes: int) -> str:
-    gb = size_bytes / (1024 ** 3)
-    if gb >= 1:
-        return f"{gb:.2f} GB"
-    mb = size_bytes / (1024 ** 2)
-    return f"{mb:.1f} MB"
-
-
-def _format_speed(speed_bytes: int) -> str:
-    kb = speed_bytes / 1024
-    if kb >= 1024:
-        return f"{kb / 1024:.1f} MB/s"
-    return f"{kb:.0f} KB/s"
+_format_size = bot_common.format_size
+_format_speed = bot_common.format_speed
 
 
 @st.cache_resource
