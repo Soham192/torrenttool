@@ -30,7 +30,7 @@ class QBitSearchProvider(BaseSearchProvider):
     def search(
         self,
         query: SearchQuery,
-        timeout: int = 60,
+        timeout: int = 120,
         poll_interval: int = 2,
     ) -> list[SearchResult]:
         try:
@@ -46,6 +46,8 @@ class QBitSearchProvider(BaseSearchProvider):
         logger.info("Search started (job %s) for '%s'", job_id, query.query)
 
         elapsed = 0
+        last_total = -1
+        stale_polls = 0
         while elapsed < timeout:
             time.sleep(poll_interval)
             elapsed += poll_interval
@@ -59,12 +61,28 @@ class QBitSearchProvider(BaseSearchProvider):
                     status = status[0] if len(status) > 0 else {}
                 except (TypeError, KeyError, IndexError):
                     status = {}
-            if hasattr(status, "get"):
-                stopped = status.get("status") == "Stopped"
-            else:
-                stopped = getattr(status, "status", None) == "Stopped"
-            if stopped:
+
+            def _status_get(key, default=None):
+                if hasattr(status, "get"):
+                    return status.get(key, default)
+                return getattr(status, key, default)
+
+            if _status_get("status") == "Stopped":
                 logger.info("Search job %s completed", job_id)
+                break
+
+            current_total = _status_get("total", 0) or 0
+            if current_total > 0 and current_total == last_total:
+                stale_polls += 1
+            else:
+                stale_polls = 0
+            last_total = current_total
+
+            if stale_polls >= 3 and current_total > 0:
+                logger.info(
+                    "Search job %s has %d results and stopped growing — collecting early",
+                    job_id, current_total,
+                )
                 break
         else:
             try:
