@@ -1,3 +1,5 @@
+import re
+
 import streamlit as st
 import config
 from client import QBittorrentDriver, QBitAuthError, QBitClientError
@@ -46,7 +48,11 @@ if "username" not in st.session_state:
     st.subheader("Enter a username to get started")
     name = st.text_input("Username", placeholder="e.g. john")
     if st.button("Continue", type="primary", disabled=not name):
-        st.session_state["username"] = name.strip().lower().replace(" ", "_")
+        clean = re.sub(r"[^a-z0-9_]", "", name.strip().lower().replace(" ", "_"))
+        if not clean:
+            st.error("Username must contain at least one letter or number.")
+            st.stop()
+        st.session_state["username"] = clean
         st.rerun()
     st.stop()
 

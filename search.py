@@ -57,7 +57,7 @@ class QBitSearchProvider(BaseSearchProvider):
             if not isinstance(status, dict):
                 try:
                     status = status[0] if len(status) > 0 else {}
-                except (TypeError, KeyError):
+                except (TypeError, KeyError, IndexError):
                     status = {}
             if hasattr(status, "get"):
                 stopped = status.get("status") == "Stopped"

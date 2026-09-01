@@ -7,6 +7,8 @@ services:
       - PGID=1000
       - TZ=Asia/Kolkata
       - WEBUI_PORT=8080
+    expose:
+      - "8080"
     volumes:
       - qbit_config:/config
       - downloads:/downloads
@@ -18,12 +20,8 @@ services:
   streamlit:
     build: .
     container_name: streamlit_app
-    environment:
-      - QBIT_HOST=qbittorrent
-      - QBIT_PORT=8080
-      - QBIT_USERNAME=admin
-      - QBIT_PASSWORD=adminadmin
-      - DEFAULT_SAVE_PATH=/downloads
+    env_file:
+      - .env
     ports:
       - "8501:8501"
     depends_on:
