@@ -54,9 +54,16 @@ class QBitSearchProvider(BaseSearchProvider):
             except qbittorrentapi.APIError as exc:
                 raise SearchJobError(f"Failed to poll search status: {exc}") from exc
 
-            if isinstance(status, list):
-                status = status[0] if status else {}
-            if status.get("status") == "Stopped":
+            if not isinstance(status, dict):
+                try:
+                    status = status[0] if len(status) > 0 else {}
+                except (TypeError, KeyError):
+                    status = {}
+            if hasattr(status, "get"):
+                stopped = status.get("status") == "Stopped"
+            else:
+                stopped = getattr(status, "status", None) == "Stopped"
+            if stopped:
                 logger.info("Search job %s completed", job_id)
                 break
         else:
@@ -78,18 +85,26 @@ class QBitSearchProvider(BaseSearchProvider):
             except qbittorrentapi.APIError:
                 pass
 
-        results_list = raw_results
         if isinstance(raw_results, dict):
             results_list = raw_results.get("results", [])
+        elif hasattr(raw_results, "results"):
+            results_list = raw_results.results
+        else:
+            results_list = raw_results
+
+        def _get(obj, key, default=None):
+            if hasattr(obj, "get"):
+                return obj.get(key, default)
+            return getattr(obj, key, default)
 
         results = []
         for r in results_list:
             sr = SearchResult(
-                title=r.get("fileName", ""),
-                download_url=r.get("fileUrl", ""),
-                size_bytes=max(0, r.get("fileSize", 0)),
-                seeders=max(0, r.get("nbSeeders", 0)),
-                indexer=r.get("siteUrl", "qBitPlugin"),
+                title=_get(r, "fileName", ""),
+                download_url=_get(r, "fileUrl", ""),
+                size_bytes=max(0, _get(r, "fileSize", 0)),
+                seeders=max(0, _get(r, "nbSeeders", 0)),
+                indexer=_get(r, "siteUrl", "qBitPlugin"),
             )
             if sr.seeders >= query.min_seeders:
                 results.append(sr)

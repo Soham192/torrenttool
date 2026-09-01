@@ -1,0 +1,35 @@
+services:
+  qbittorrent:
+    image: linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Kolkata
+      - WEBUI_PORT=8080
+    volumes:
+      - qbit_config:/config
+      - downloads:/downloads
+    ports:
+      - "6881:6881"
+      - "6881:6881/udp"
+    restart: unless-stopped
+
+  streamlit:
+    build: .
+    container_name: streamlit_app
+    environment:
+      - QBIT_HOST=qbittorrent
+      - QBIT_PORT=8080
+      - QBIT_USERNAME=admin
+      - QBIT_PASSWORD=adminadmin
+      - DEFAULT_SAVE_PATH=/downloads
+    ports:
+      - "8501:8501"
+    depends_on:
+      - qbittorrent
+    restart: unless-stopped
+
+volumes:
+  qbit_config:
+  downloads:

@@ -1,6 +1,9 @@
 qbittorrent-api>=2024.1.58
 pydantic>=2.0
 python-dotenv
+streamlit
+python-telegram-bot>=20.0
+discord.py>=2.3.0
 
 # dev
 pytest
